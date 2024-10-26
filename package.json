@@ -4,7 +4,9 @@
   "description": "Moves a floating window out of the mouse cursor",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc -p .",
+    "start": "tsx src/main.ts"
   },
   "author": "Alex D'Andrea <alex@dandrea.io>",
   "license": "MIT",
