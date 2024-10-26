@@ -1,25 +1,18 @@
-import child_process from 'child_process';
+import { SwayListener } from './sway-listener.js';
+import { Container } from './sway.js';
 
 async function main() {
-  console.log('Spawning swaymsg...');
-  const spawn = child_process.spawn('swaymsg', ['--monitor', '--type', 'subscribe', '["window"]']);
+  const listener = new SwayListener();
 
-  spawn.stdout.on('data', (chunk: any) => {
-    if (chunk instanceof Buffer) {
-      try {
-        const data = JSON.parse(chunk.toString());
-        console.log(data);
-      } catch (err: unknown) {
-        console.error(err);
-      }
-    }
+  listener.on('focus', (container: Container) => {
+    console.log(container);
   });
 
-  spawn.stderr.on('data', (chunk: any) => {
-    console.error(chunk);
+  listener.on('error', (data: any) => {
+    console.log(data);
   });
 
-  return spawn;
+  return listener.run();
 }
 
 await main();
