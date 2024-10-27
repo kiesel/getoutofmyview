@@ -2,13 +2,13 @@ import child_process from 'child_process';
 import EventEmitter from 'events';
 import { Container, Point, WindowEvent as WindowEvent, Workspace, WorkspaceEvent } from './sway.js';
 
-export declare interface SwayEventListener {
+export declare interface SwayIpc {
   on(event: 'window', listener: (event: WindowEvent) => void): this;
   on(event: 'workspace', listener: (event: WorkspaceEvent) => void): this;
   on(event: 'error', listener: (error: any) => void): this;
 }
 
-export class SwayEventListener extends EventEmitter {
+export class SwayIpc extends EventEmitter {
   private handle?: child_process.ChildProcessWithoutNullStreams;
 
   eventNames(): (string | symbol)[] {
@@ -22,7 +22,6 @@ export class SwayEventListener extends EventEmitter {
       if (chunk instanceof Buffer) {
         try {
           const data = this.readSwayObject(chunk);
-          console.log(data);
 
           switch (data.type) {
             case 'WindowEvent': {
@@ -59,16 +58,20 @@ export class SwayEventListener extends EventEmitter {
     this.handle?.kill('SIGINT');
   }
 
-  async moveWindow(id: number, position: Point) {
+  moveWindow(id: number, position: Point) {
     return this.swayCommand(`[con_id = ${id}] move position ${position.x} px ${position.y} px`);
   }
 
-  async focusWindow(id: number) {
+  focusWindow(id: number) {
     return this.swayCommand(`[con_id = ${id}] focus`);
   }
 
-  private swayCommand(cmd: string) {
-    return child_process.spawn('swaymsg', [cmd]);
+  getWorkspaces() {
+    return this.swayCommand('--type', 'get_workspaces');
+  }
+
+  private swayCommand(...cmd: string[]) {
+    return child_process.spawn('swaymsg', cmd);
   }
 
   private readSwayObject(chunk: Buffer): WindowEvent | WorkspaceEvent {
@@ -107,11 +110,11 @@ export class SwayEventListener extends EventEmitter {
 export class SwayWorkspaces {
   private _workspaces?: Record<number, Workspace> = undefined;
 
-  constructor(private eventListener: SwayEventListener) {}
+  constructor(private swayIpc: SwayIpc) {}
 
   async initialize() {
     return new Promise<void>((resolve, reject) => {
-      const process = child_process.spawn('swaymsg', ['--type', 'get_workspaces']);
+      const process = this.swayIpc.getWorkspaces();
 
       let strBuf = '';
       process.stdout.on('data', (chunk: any) => {
@@ -135,7 +138,7 @@ export class SwayWorkspaces {
           this._workspaces[workspace.id] = new Workspace(workspace);
         }
 
-        this.eventListener.on('workspace', this.update.bind(this));
+        this.swayIpc.on('workspace', this.update.bind(this));
 
         resolve();
       });

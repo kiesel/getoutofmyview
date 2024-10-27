@@ -1,4 +1,4 @@
-import { SwayEventListener, SwayWorkspaces } from './sway-listener.js';
+import { SwayIpc, SwayWorkspaces } from './sway-ipc.js';
 import { Container, Point, Vertex, WindowEvent, Workspace } from './sway.js';
 
 function isFloatingWindow(container: Container): boolean {
@@ -49,7 +49,7 @@ function computeNextPosition(container: Container, workspace: Workspace, next: V
 }
 
 async function main() {
-  const listener = new SwayEventListener();
+  const listener = new SwayIpc();
 
   const ws = new SwayWorkspaces(listener);
   await ws.initialize();
