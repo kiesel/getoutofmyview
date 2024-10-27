@@ -59,11 +59,11 @@ export class SwayIpc extends EventEmitter {
   }
 
   moveWindow(id: number, position: Point) {
-    return this.swayCommand(`[con_id = ${id}] move position ${position.x} px ${position.y} px`);
+    return this.awaitableProcess(this.swayCommand(`[con_id = ${id}] move position ${position.x} px ${position.y} px`));
   }
 
   focusWindow(id: number) {
-    return this.swayCommand(`[con_id = ${id}] focus`);
+    return this.awaitableProcess(this.swayCommand(`[con_id = ${id}] focus`));
   }
 
   getWorkspaces() {
@@ -72,6 +72,12 @@ export class SwayIpc extends EventEmitter {
 
   private swayCommand(...cmd: string[]) {
     return child_process.spawn('swaymsg', cmd);
+  }
+
+  private awaitableProcess(process: child_process.ChildProcessWithoutNullStreams): Promise<number | null> {
+    return new Promise<number | null>((resolve) => {
+      process.once('exit', (code) => resolve(code));
+    });
   }
 
   private readSwayObject(chunk: Buffer): WindowEvent | WorkspaceEvent {
