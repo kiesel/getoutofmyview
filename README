@@ -1,0 +1,4 @@
+# Get out of my view
+
+This is a little helper for [Sway](https://swaywm.org/) users: when you watch a video in a small, floating (= not in tiling mode), sticky window (= visible on all workspaces) the video sometimes gets in your way. Getoutofmyview makes the window flee from the mouse cursor and get out of the view.
+
