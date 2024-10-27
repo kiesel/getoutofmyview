@@ -52,10 +52,10 @@ export class Container {
   constructor(input: any) {
     Object.assign(this, {
       ...input,
-      rect: input.rect ? new Rect(input.rect) : input.rect,
-      deco_rect: input.deco_rect ? new Rect(input.deco_rect) : input.deco_rect,
-      window_rect: input.window_rect ? new Rect(input.window_rect) : input.window_rect,
-      geometry: input.geometry ? new Rect(input.geometry_rect) : input.geometry,
+      rect: Rect.from(input.rect),
+      deco_rect: Rect.from(input.deco_rect),
+      window_rect: Rect.from(input.window_rect),
+      geometry: Rect.from(input.geometry),
     });
   }
 }
@@ -77,6 +77,14 @@ export class Rect {
 
   constructor(input: object) {
     Object.assign(this, input);
+  }
+
+  static from(input: object | null | undefined) {
+    if (!input) {
+      return input;
+    }
+
+    return new Rect(input);
   }
 
   topleft(): Point {
@@ -144,10 +152,18 @@ export class Workspace {
   constructor(input: any) {
     Object.assign(this, {
       ...input,
-      rect: new Rect(input.rect),
-      deco_rect: new Rect(input.deco_rect),
-      window_rect: new Rect(input.window_rect),
-      geometry: new Rect(input.geometry_rect),
+      rect: Rect.from(input.rect),
+      deco_rect: Rect.from(input.deco_rect),
+      window_rect: Rect.from(input.window_rect),
+      geometry: Rect.from(input.geometry_rect),
     });
+  }
+
+  static from(input: object | null) {
+    if (!input) {
+      return input;
+    }
+
+    return new Workspace(input);
   }
 }

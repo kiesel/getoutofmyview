@@ -49,23 +49,31 @@ function computeNextPosition(container: Container, workspace: Workspace, next: V
 }
 
 async function main() {
-  const ws = new SwayWorkspaces();
-  await ws.readWorkspaces();
-
   const listener = new SwayEventListener();
 
-  listener.on('window', (event: WindowEvent) => {
+  const ws = new SwayWorkspaces(listener);
+  await ws.initialize();
+
+  let focussedWindow: Container;
+  listener.on('window', async (event: WindowEvent) => {
     if (event.change !== 'focus') {
       return;
     }
 
+    console.log(event);
     if (isFloatingWindow(event.container)) {
-      const corner = nearestWorkspaceVertex(event.container, ws.current());
-      const next = nextVertex(corner);
+      const nearestVertex = nearestWorkspaceVertex(event.container, ws.current());
+
+      const next = nextVertex(nearestVertex);
       const point = computeNextPosition(event.container, ws.current(), next);
 
-      console.log('Next corner is', next);
-      console.log('Next position is', point);
+      await listener.moveWindow(event.container.id, point);
+      if (focussedWindow) {
+        await listener.focusWindow(focussedWindow.id);
+      }
+    } else {
+      // Remember previous focussed window for later
+      focussedWindow = event.container;
     }
   });
 
@@ -73,7 +81,7 @@ async function main() {
     console.log(data);
   });
 
-  return listener.run();
+  await listener.listen();
 }
 
 await main();

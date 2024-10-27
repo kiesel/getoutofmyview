@@ -1,25 +1,28 @@
 import child_process from 'child_process';
 import EventEmitter from 'events';
-import { Container, WindowEvent as WindowEvent, Workspace, WorkspaceEvent } from './sway.js';
+import { Container, Point, WindowEvent as WindowEvent, Workspace, WorkspaceEvent } from './sway.js';
 
-export declare interface SwayListener {
+export declare interface SwayEventListener {
   on(event: 'window', listener: (event: WindowEvent) => void): this;
   on(event: 'workspace', listener: (event: WorkspaceEvent) => void): this;
+  on(event: 'error', listener: (error: any) => void): this;
 }
 
 export class SwayEventListener extends EventEmitter {
+  private handle?: child_process.ChildProcessWithoutNullStreams;
+
   eventNames(): (string | symbol)[] {
-    return ['window', 'workspace'];
+    return ['window', 'workspace', 'error'];
   }
 
-  async run() {
-    console.log('Spawning swaymsg...');
-    const process = child_process.spawn('swaymsg', ['--monitor', '--type', 'subscribe', '["window", "workspace"]']);
+  listen() {
+    this.handle = child_process.spawn('swaymsg', ['--monitor', '--type', 'subscribe', '["window", "workspace"]']);
 
-    process.stdout.on('data', (chunk: any) => {
+    this.handle.stdout.on('data', (chunk: any) => {
       if (chunk instanceof Buffer) {
         try {
           const data = this.readSwayObject(chunk);
+          console.log(data);
 
           switch (data.type) {
             case 'WindowEvent': {
@@ -43,11 +46,29 @@ export class SwayEventListener extends EventEmitter {
       }
     });
 
-    process.stderr.on('data', (chunk: any) => {
+    this.handle.stderr.on('data', (chunk: any) => {
       console.error(chunk);
     });
 
-    return process;
+    this.handle.once('exit', (code) => {
+      this.handle = undefined;
+    });
+  }
+
+  close() {
+    this.handle?.kill('SIGINT');
+  }
+
+  async moveWindow(id: number, position: Point) {
+    return this.swayCommand(`[con_id = ${id}] move position ${position.x} px ${position.y} px`);
+  }
+
+  async focusWindow(id: number) {
+    return this.swayCommand(`[con_id = ${id}] focus`);
+  }
+
+  private swayCommand(cmd: string) {
+    return child_process.spawn('swaymsg', [cmd]);
   }
 
   private readSwayObject(chunk: Buffer): WindowEvent | WorkspaceEvent {
@@ -60,8 +81,8 @@ export class SwayEventListener extends EventEmitter {
       return {
         type: 'WorkspaceEvent',
         change: data.change,
-        old: data.old ? new Workspace(data.old) : data.old,
-        current: data.current ? new Workspace(data.current) : data.current,
+        old: Workspace.from(data.old),
+        current: Workspace.from(data.current)!,
       };
     }
 
@@ -84,9 +105,11 @@ export class SwayEventListener extends EventEmitter {
 }
 
 export class SwayWorkspaces {
-  private workspaces?: Record<number, Workspace> = undefined;
+  private _workspaces?: Record<number, Workspace> = undefined;
 
-  async readWorkspaces() {
+  constructor(private eventListener: SwayEventListener) {}
+
+  async initialize() {
     return new Promise<void>((resolve, reject) => {
       const process = child_process.spawn('swaymsg', ['--type', 'get_workspaces']);
 
@@ -107,29 +130,34 @@ export class SwayWorkspaces {
           reject(new Error('Not reading array'));
         }
 
-        this.workspaces = {};
+        this._workspaces = {};
         for (let workspace of workspaces) {
-          this.workspaces[workspace.id] = new Workspace(workspace);
+          this._workspaces[workspace.id] = new Workspace(workspace);
         }
+
+        this.eventListener.on('workspace', this.update.bind(this));
 
         resolve();
       });
     });
   }
 
-  workspace(id: number): Workspace | undefined {
-    if (this.workspaces === undefined) {
+  private update(event: WorkspaceEvent) {
+    this.workspaces[event.current.id] = event.current;
+  }
+
+  private get workspaces(): Record<number, Workspace> {
+    if (this._workspaces === undefined) {
       throw new Error('Not initialized');
     }
+    return this._workspaces;
+  }
 
+  workspace(id: number): Workspace | undefined {
     return this.workspaces[id];
   }
 
   current(): Workspace {
-    if (this.workspaces === undefined) {
-      throw new Error('Not initialized');
-    }
-
     const workspace = Object.values(this.workspaces).find((workspace) => workspace.focused === true);
     if (undefined === workspace) {
       throw new Error('No current workspace?');
