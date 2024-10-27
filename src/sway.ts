@@ -1,3 +1,10 @@
+export enum Vertex {
+  TOP_LEFT = 'TOP_LEFT',
+  TOP_RIGHT = 'TOP_RIGHT',
+  BOTTOM_LEFT = 'BOTTOM_LEFT',
+  BOTTOM_RIGHT = 'BOTTOM_RIGHT',
+}
+
 // see sway-ipc(7)
 export interface WindowEvent {
   type: 'WindowEvent';
@@ -45,18 +52,19 @@ export class Container {
   constructor(input: any) {
     Object.assign(this, {
       ...input,
-      rect: new Rect(input.rect),
-      deco_rect: new Rect(input.deco_rect),
-      window_rect: new Rect(input.window_rect),
-      geometry: new Rect(input.geometry_rect),
+      rect: input.rect ? new Rect(input.rect) : input.rect,
+      deco_rect: input.deco_rect ? new Rect(input.deco_rect) : input.deco_rect,
+      window_rect: input.window_rect ? new Rect(input.window_rect) : input.window_rect,
+      geometry: input.geometry ? new Rect(input.geometry_rect) : input.geometry,
     });
   }
 }
 
-class Point {
-  constructor(private x: number, private y: number) {}
+export class Point {
+  constructor(public x: number, public y: number) {}
 
   distance(to: Point): number {
+    // Pythagoras
     return Math.sqrt(Math.pow(to.x - this.x, 2) + Math.pow(to.y - this.y, 2));
   }
 }
@@ -85,6 +93,19 @@ export class Rect {
 
   bottomright(): Point {
     return new Point(this.x + this.width, this.y + this.height);
+  }
+
+  byVertex(vertex: Vertex) {
+    switch (vertex) {
+      case Vertex.TOP_LEFT:
+        return this.topleft();
+      case Vertex.TOP_RIGHT:
+        return this.topright();
+      case Vertex.BOTTOM_LEFT:
+        return this.bottomleft();
+      case Vertex.BOTTOM_RIGHT:
+        return this.bottomright();
+    }
   }
 }
 
